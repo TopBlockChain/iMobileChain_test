@@ -19,9 +19,9 @@ package core
 import (
 	"container/list"
 
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/event"
+	"github.com/blockchain/imobilechain/core/types"
+	"github.com/blockchain/imobilechain/ethdb"
+	"github.com/blockchain/imobilechain/event"
 )
 
 // Implement our EthTest Manager

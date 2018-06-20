@@ -17,14 +17,14 @@
 package core
 
 import (
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/consensus"
-	"github.com/ethereum/go-ethereum/consensus/misc"
-	"github.com/ethereum/go-ethereum/core/state"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/core/vm"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/blockchain/imobilechain/common"
+	"github.com/blockchain/imobilechain/consensus"
+	"github.com/blockchain/imobilechain/consensus/misc"
+	"github.com/blockchain/imobilechain/core/state"
+	"github.com/blockchain/imobilechain/core/types"
+	"github.com/blockchain/imobilechain/core/vm"
+	"github.com/blockchain/imobilechain/crypto"
+	"github.com/blockchain/imobilechain/params"
 )
 
 // StateProcessor is a basic Processor, which takes care of transitioning

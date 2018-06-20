@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/metrics"
+	"github.com/blockchain/imobilechain/log"
+	"github.com/blockchain/imobilechain/metrics"
 )
 
 //metrics variables

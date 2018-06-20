@@ -20,17 +20,17 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/ethereum/go-ethereum/log"
+	"github.com/blockchain/imobilechain/log"
 )
 
 /*
 http roundtripper to register for bzz url scheme
-see https://github.com/ethereum/go-ethereum/issues/2040
+see https://github.com/blockchain/imobilechain/issues/2040
 Usage:
 
 import (
- "github.com/ethereum/go-ethereum/common/httpclient"
- "github.com/ethereum/go-ethereum/swarm/api/http"
+ "github.com/blockchain/imobilechain/common/httpclient"
+ "github.com/blockchain/imobilechain/swarm/api/http"
 )
 client := httpclient.New()
 // for (private) swarm proxy running locally
