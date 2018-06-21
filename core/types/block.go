@@ -81,6 +81,7 @@ type Header struct {
 	GasUsed     uint64         `json:"gasUsed"          gencodec:"required"`
 	Time        *big.Int       `json:"timestamp"        gencodec:"required"`
 	Extra       []byte         `json:"extraData"        gencodec:"required"`
+	Tokentime   *big.Int       `json:"tokentime"        gencodec:"required"`
 	MixDigest   common.Hash    `json:"mixHash"          gencodec:"required"`
 	Nonce       BlockNonce     `json:"nonce"            gencodec:"required"`
 }
@@ -253,6 +254,9 @@ func CopyHeader(h *Header) *Header {
 		cpy.Extra = make([]byte, len(h.Extra))
 		copy(cpy.Extra, h.Extra)
 	}
+	if cpy.Tokentime = new(big.Int); h.Tokentime != nil {
+		cpy.Tokentime.Set(h.Tokentime)
+	}
 	return &cpy
 }
 
@@ -318,6 +322,7 @@ func (b *Block) TxHash() common.Hash      { return b.header.TxHash }
 func (b *Block) ReceiptHash() common.Hash { return b.header.ReceiptHash }
 func (b *Block) UncleHash() common.Hash   { return b.header.UncleHash }
 func (b *Block) Extra() []byte            { return common.CopyBytes(b.header.Extra) }
+func (b *Block) Tokentime() *big.Int { return new(big.Int).Set(b.header.Tokentime) }
 
 func (b *Block) Header() *Header { return CopyHeader(b.header) }
 

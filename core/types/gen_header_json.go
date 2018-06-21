@@ -30,6 +30,7 @@ func (h Header) MarshalJSON() ([]byte, error) {
 		Extra       hexutil.Bytes  `json:"extraData"        gencodec:"required"`
 		MixDigest   common.Hash    `json:"mixHash"          gencodec:"required"`
 		Nonce       BlockNonce     `json:"nonce"            gencodec:"required"`
+		Tokentime  *hexutil.Big    `json:"tokentime"        gencodec:"required"`
 		Hash        common.Hash    `json:"hash"`
 	}
 	var enc Header
@@ -48,6 +49,7 @@ func (h Header) MarshalJSON() ([]byte, error) {
 	enc.Extra = h.Extra
 	enc.MixDigest = h.MixDigest
 	enc.Nonce = h.Nonce
+	enc.Tokentime = (*hexutil.Big)(h.Tokentime)
 	enc.Hash = h.Hash()
 	return json.Marshal(&enc)
 }
@@ -69,6 +71,7 @@ func (h *Header) UnmarshalJSON(input []byte) error {
 		Extra       *hexutil.Bytes  `json:"extraData"        gencodec:"required"`
 		MixDigest   *common.Hash    `json:"mixHash"          gencodec:"required"`
 		Nonce       *BlockNonce     `json:"nonce"            gencodec:"required"`
+		Tokentime   *hexutil.Big    `json:"tokentime"        gencodec:"required"`
 	}
 	var dec Header
 	if err := json.Unmarshal(input, &dec); err != nil {
@@ -130,6 +133,10 @@ func (h *Header) UnmarshalJSON(input []byte) error {
 		return errors.New("missing required field 'mixHash' for Header")
 	}
 	h.MixDigest = *dec.MixDigest
+	if dec.Tokentime == nil {
+		return errors.New("missing required field 'tokentime' for Header")
+	}
+	h.Tokentime = (*big.Int)(dec.Tokentime)
 	if dec.Nonce == nil {
 		return errors.New("missing required field 'nonce' for Header")
 	}
