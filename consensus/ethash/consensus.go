@@ -36,10 +36,11 @@ import (
 
 // Ethash proof-of-work protocol constants.
 var (
-	FrontierBlockReward    *big.Int = big.NewInt(5e+18) // Block reward in wei for successfully mining a block
-	ByzantiumBlockReward   *big.Int = big.NewInt(3e+18) // Block reward in wei for successfully mining a block upward from Byzantium
+	// FrontierBlockReward    *big.Int = big.NewInt(5e+18) // Block reward in wei for successfully mining a block
+	// ByzantiumBlockReward   *big.Int = big.NewInt(3e+18) // Block reward in wei for successfully mining a block upward from Byzantium
 	maxUncles                       = 2                 // Maximum number of uncles allowed in a single block
 	allowedFutureBlockTime          = 15 * time.Second  // Max time from current time allowed for blocks, before they're considered future blocks
+	blockReward *big.Int = big.NewInt(8e+18) // Block reward in wei for successfully mining a block
 )
 
 // Various error messages to mark blocks invalid. These should be private to
@@ -299,8 +300,8 @@ func CalcDifficulty(config *params.ChainConfig, time uint64, parent *types.Heade
 	switch {
 	case config.IsByzantium(next):
 		return calcDifficultyByzantium(time, parent)
-	case config.IsHomestead(next):
-		return calcDifficultyHomestead(time, parent)
+	// case config.IsHomestead(next):
+	// 	return calcDifficultyHomestead(time, parent)
 	default:
 		return calcDifficultyFrontier(time, parent)
 	}
@@ -462,6 +463,7 @@ func calcDifficultyFrontier(time uint64, parent *types.Header) *big.Int {
 // the PoW difficulty requirements.
 func (ethash *Ethash) VerifySeal(chain consensus.ChainReader, header *types.Header) error {
 	// If we're running a fake PoW, accept any seal as valid
+	var diff_just *big.Int
 	if ethash.config.PowMode == ModeFake || ethash.config.PowMode == ModeFullFake {
 		time.Sleep(ethash.fakeDelay)
 		if ethash.fakeFail == header.Number.Uint64() {
@@ -493,7 +495,21 @@ func (ethash *Ethash) VerifySeal(chain consensus.ChainReader, header *types.Head
 	if !bytes.Equal(header.MixDigest[:], digest) {
 		return errInvalidMixDigest
 	}
-	target := new(big.Int).Div(maxUint256, header.Difficulty)
+	var just_time *big.Int
+	if header.Tokentime.Cmp(big.NewInt(1)) < 0 {
+		just_time = big.NewInt(1)
+	} else {
+		just_time = header.Tokentime
+	}
+	if just_time.Cmp(header.Difficulty) > 0 {
+		diff_just = big.NewInt(1)
+	} else {
+		diff_just = new(big.Int).Div(header.Difficulty, just_time)
+	}
+
+	target := new(big.Int).Div(maxUint256, diff_just)
+
+	// target := new(big.Int).Div(maxUint256, header.Difficulty)
 	if new(big.Int).SetBytes(result).Cmp(target) > 0 {
 		return errInvalidPoW
 	}
@@ -533,22 +549,49 @@ var (
 // included uncles. The coinbase of each uncle block is also rewarded.
 func accumulateRewards(config *params.ChainConfig, state *state.StateDB, header *types.Header, uncles []*types.Header) {
 	// Select the correct block reward based on chain progression
-	blockReward := FrontierBlockReward
-	if config.IsByzantium(header.Number) {
-		blockReward = ByzantiumBlockReward
-	}
-	// Accumulate the rewards for the miner and any included uncles
-	reward := new(big.Int).Set(blockReward)
-	r := new(big.Int)
-	for _, uncle := range uncles {
-		r.Add(uncle.Number, big8)
-		r.Sub(r, header.Number)
-		r.Mul(r, blockReward)
-		r.Div(r, big8)
-		state.AddBalance(uncle.Coinbase, r)
+	// blockReward := FrontierBlockReward
+	// if config.IsByzantium(header.Number) {
+	// 	blockReward = ByzantiumBlockReward
+	// }
+	// // Accumulate the rewards for the miner and any included uncles
+	// reward := new(big.Int).Set(blockReward)
+	// r := new(big.Int)
+	// for _, uncle := range uncles {
+	// 	r.Add(uncle.Number, big8)
+	// 	r.Sub(r, header.Number)
+	// 	r.Mul(r, blockReward)
+	// 	r.Div(r, big8)
+	// 	state.AddBalance(uncle.Coinbase, r)
 
-		r.Div(blockReward, big32)
-		reward.Add(reward, r)
-	}
-	state.AddBalance(header.Coinbase, reward)
+	// 	r.Div(blockReward, big32)
+	// 	reward.Add(reward, r)
+	// }
+	// state.AddBalance(header.Coinbase, reward)
+
+  if header.Tokentime==nil {
+		return
+  }
+  if header.Tokentime.Cmp(big.NewInt(0))>0 {
+		
+    reward := new(big.Int).Set(blockReward)
+    r := new(big.Int)
+    for _, uncle := range uncles {
+	   r.Add(uncle.Number, big8)
+	   r.Sub(r, header.Number)
+	   r.Mul(r, blockReward)
+	   r.Div(r, big8)
+	   //如果不是合约帐号，则不奖励。
+	   if state.GetCode(uncle.Coinbase)==nil{
+		  continue
+	    }
+	   state.AddBalance(uncle.Coinbase, r)
+	   r.Div(blockReward, big32)
+	   reward.Add(reward, r)
+    }
+    TotalReward:=new(big.Int).Set(reward.Mul(reward,big.NewInt(100)))
+    Reward_justnum:=new(big.Int).Set(header.Number)
+    Reward_justnum.Div(header.Number, big.NewInt(43750000))   //计算调整系数,每隔4375万个区块减半发行,从而使总量控制在1000亿个IMC。
+    TotalReward.Div(TotalReward,math.Exp(big.NewInt(2),Reward_justnum))   // reward/2**justnum
+    state.AddBalance(header.Coinbase, TotalReward)
+   }
 }

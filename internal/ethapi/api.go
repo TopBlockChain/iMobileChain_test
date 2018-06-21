@@ -812,6 +812,7 @@ func RPCMarshalBlock(b *types.Block, inclTx bool, fullTx bool) (map[string]inter
 		"gasUsed":          hexutil.Uint64(head.GasUsed),
 		"timestamp":        (*hexutil.Big)(head.Time),
 		"transactionsRoot": head.TxHash,
+		"tokentime":       (*hexutil.Big)(head.Tokentime),
 		"receiptsRoot":     head.ReceiptHash,
 	}
 

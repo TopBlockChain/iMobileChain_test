@@ -417,6 +417,10 @@ func (self *worker) commitNewWork() {
 	// Only set the coinbase if we are mining (avoid spurious block rewards)
 	if atomic.LoadInt32(&self.mining) == 1 {
 		header.Coinbase = self.coinbase
+		header.Tokentime = self.chain.CalcTokenTime(header.Coinbase)
+		if header.Tokentime.Cmp(big.NewInt(0))==0 {
+            log.Info("There is no mobile user to mine for this application ，it can not to get reward for mining！")              
+		}
 	}
 	if err := self.engine.Prepare(self.chain, header); err != nil {
 		log.Error("Failed to prepare header for mining", "err", err)
