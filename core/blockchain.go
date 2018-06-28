@@ -954,7 +954,6 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 		}
 	}
 	rawdb.WriteReceipts(batch, block.Hash(), block.NumberU64(), receipts)
-
 	// If the total difficulty is higher than our known, add it to the canonical chain
 	// Second clause in the if statement reduces the vulnerability to selfish mining.
 	// Please refer to http://www.cs.cornell.edu/~ie53/publications/btcProcFC.pdf
@@ -1015,6 +1014,7 @@ func (bc *BlockChain) CalcTokenTime(Coinbase common.Address) (Tokentime *big.Int
 	var Start_Num uint64      //定义统计启始区块号
 	//检查能量加注合约是否已部署,矿池合约是否已部署,如任一没部署,0值返回
 	if State.Exist(params.PosMinerContractAddr)!=true || State.GetCode(Coinbase)==nil {
+		log.Info("The miner address is not a application pool address","coinbase",Coinbase)
 		return Tokentime
 	}
 	//如果区块数大于一天的区块数，则统计启始点为当前区块号之前的5670所对应的区块号，否则从0块开始统计
@@ -1112,7 +1112,7 @@ func (bc *BlockChain) CalcTokenTime(Coinbase common.Address) (Tokentime *big.Int
 	//统计总用户权重并查询和定义当前矿池的用户权重
 	var TotalUsers,Coinbase_users int64
 	for y:=0;y<len(AppUsers);y++{
-	//	log.Info("计算结果","App",AppUsers[y].AppAddress,"ActiveMiners",AppUsers[y].ActiveUsers)
+		//log.Info("计算结果","App",AppUsers[y].AppAddress,"ActiveMiners",AppUsers[y].ActiveUsers)
 		TotalUsers=TotalUsers+AppUsers[y].ActiveUsers
 		if AppUsers[y].AppAddress==Coinbase {
 			Coinbase_users=AppUsers[y].ActiveUsers    //当前矿池的用户权重

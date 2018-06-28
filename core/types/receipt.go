@@ -25,6 +25,8 @@ import (
 	"github.com/blockchain/imobilechain/common"
 	"github.com/blockchain/imobilechain/common/hexutil"
 	"github.com/blockchain/imobilechain/rlp"
+	//"github.com/blockchain/imobilechain/log"
+
 )
 
 //go:generate gencodec -type Receipt -field-override receiptMarshaling -out gen_receipt_json.go
