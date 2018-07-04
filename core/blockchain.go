@@ -1192,10 +1192,11 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 	abort, results := bc.engine.VerifyHeaders(bc, headers, seals)
 	
 	Tokentime := bc.CalcTokenTime(bc.CurrentBlock().Coinbase())
-	if Tokentime.Cmp(bc.CurrentBlock().Header().Tokentime) < 0 {
+	//统计所得Tokentime减去矿工所提供的Tokentime的绝对值小于等于1
+	if Tokentime.Abs(Tokentime.Sub(Tokentime,bc.CurrentBlock().Header().Tokentime)).Cmp(big.NewInt(1))>0  {
 	    return 1, events, coalescedLogs, fmt.Errorf("invalid Tokentime: have %v, need %v", bc.CurrentBlock().Header().Tokentime, Tokentime)
 	}
-		
+
 	defer close(abort)
 
 	// Start a parallel signature recovery (signer will fluke on fork transition, minimal perf loss)
