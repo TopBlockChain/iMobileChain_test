@@ -11,10 +11,10 @@
 GOBIN = $(shell pwd)/build/bin
 GO ?= latest
 
-geth:
-	build/env.sh go run build/ci.go install ./cmd/geth
+imc:
+	build/env.sh go run build/ci.go install ./cmd/imc
 	@echo "Done building."
-	@echo "Run \"$(GOBIN)/geth\" to launch geth."
+	@echo "Run \"$(GOBIN)/imc\" to launch imc."
 
 swarm:
 	build/env.sh go run build/ci.go install ./cmd/swarm
