@@ -18,11 +18,11 @@
 package core
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
 	"math"
-	"bytes"
 	"math/big"
 	mrand "math/rand"
 	"sync"
@@ -989,150 +989,150 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	bc.futureBlocks.Remove(block.Hash())
 	return status, nil
 }
+
 //统计移动应用矿池的能量值
-func (bc *BlockChain) CalcTokenTime(Coinbase common.Address) (Tokentime *big.Int) {
-	
-	var exist bool   //开关变量，用于统计时检查是否已经统计，避免同一用户在同一矿池被重复统计
-	exist=false       //设初值为0
-	Tokentime=big.NewInt(0)    //权重初值设为0
+func (bc *BlockChain) CalcTokenTime(Coinbase common.Address, ComputeNumber uint64) (Tokentime *big.Int) {
+
+	var exist bool            //开关变量，用于统计时检查是否已经统计，避免同一用户在同一矿池被重复统计
+	exist = false             //设初值为0
+	Tokentime = big.NewInt(0) //权重初值设为0
 	var (
-        MineMark=[]byte{66,200,112,91} //定义矿工能量加注访问标识
-		RefuelMark=[]byte{24,214,49,67}//common.Hex2Bytes("18d63143")   //定义挖矿交易标识符
+		MineMark   = []byte{66, 200, 112, 91} //定义矿工能量加注访问标识
+		RefuelMark = []byte{24, 214, 49, 67}  //common.Hex2Bytes("18d63143")   //定义挖矿交易标识符
 	)
 	//定义App活跃用户统计结构
 	type AppActiveUser struct {
-		 AppAddress common.Address    //App矿池合约地址
-		 ActiveUsers int64            //活跃用户数
-	} 
-    var (
-		AppUsers []AppActiveUser  //定义变量:活跃用户统计数组变量
+		AppAddress  common.Address //App矿池合约地址
+		ActiveUsers int64          //活跃用户数
+	}
+	var (
+		AppUsers []AppActiveUser //定义变量:活跃用户统计数组变量
 		//TotalMiners=map[common.Address] bool{} //不重复统计活跃矿工总量
-		ActiveMiners []common.Address  //临时变量:统计每个应用的用户数
+		ActiveMiners []common.Address //临时变量:统计每个应用的用户数
 	)
-	RefueledMiner:= map[common.Address] *big.Int{} //定义矿工能量加注时间统计变量
-	State,_:=bc.State()
-	var Start_Num uint64      //定义统计启始区块号
+	RefueledMiner := map[common.Address]*big.Int{} //定义矿工能量加注时间统计变量
+	State, _ := bc.State()
+	var Start_Num uint64 //定义统计启始区块号
 	//检查能量加注合约是否已部署,矿池合约是否已部署,如任一没部署,0值返回
-	if State.Exist(params.PosMinerContractAddr)!=true || State.GetCode(Coinbase)==nil {
-		log.Info("The miner address is not a application pool address","coinbase",Coinbase)
+	if State.Exist(params.PosMinerContractAddr) != true || State.GetCode(Coinbase) == nil {
+		log.Info("The miner address is not a application pool address", "coinbase", Coinbase)
 		return Tokentime
 	}
 	//如果区块数大于一天的区块数，则统计启始点为当前区块号之前的5670所对应的区块号，否则从0块开始统计
-	if bc.CurrentBlock().NumberU64()<6000 {
-		Start_Num=0
-	}else{
-        Start_Num=bc.CurrentBlock().NumberU64()-6000		
+	if ComputeNumber < 6000 {
+		Start_Num = 0
+	} else {
+		Start_Num = ComputeNumber - 6000
 	}
 	//统计当前已加注能量的活跃用户数
-	for i:=Start_Num+1;i<=bc.CurrentBlock().NumberU64();i++{       //统计一天的区块
-		for _,tx:=range bc.GetBlockByNumber(i).Transactions() {   //统计每个区块的交易
-			msg,err:= tx.AsMessage(types.MakeSigner(bc.Config(), bc.GetBlockByNumber(i).Header().Number))   //获取交易的消息内容
-			xm:=[]byte{}
-			if bytes.Equal(msg.Data(),xm){
+	for i := Start_Num + 1; i <= ComputeNumber; i++ { //统计一天的区块
+		for _, tx := range bc.GetBlockByNumber(i).Transactions() { //统计每个区块的交易
+			msg, err := tx.AsMessage(types.MakeSigner(bc.Config(), bc.GetBlockByNumber(i).Header().Number)) //获取交易的消息内容
+			xm := []byte{}
+			if bytes.Equal(msg.Data(), xm) {
 				continue
 			}
-			if err != nil||msg.To()==nil||*msg.To()!=params.PosMinerContractAddr||!bytes.Equal(msg.Data()[0:4],RefuelMark){      //如果访问错误码或是合约创建消息或不是能量加注合约调用，进入下一次循环
+			if err != nil || msg.To() == nil || *msg.To() != params.PosMinerContractAddr || !bytes.Equal(msg.Data()[0:4], RefuelMark) { //如果访问错误码或是合约创建消息或不是能量加注合约调用，进入下一次循环
 				continue
 			}
 			//从msg.data中取出矿工字节数组并转化为矿工地址
-			Refminer:= common.BytesToAddress(msg.Data()[16:36])
+			Refminer := common.BytesToAddress(msg.Data()[16:36])
 			//将矿工的能量加注时间设为发送交易区块时间
-			RefueledMiner[Refminer]=bc.GetBlockByNumber(i).Time()		     
-		} 
+			RefueledMiner[Refminer] = bc.GetBlockByNumber(i).Time()
+		}
 	}
 	//for x,y:=range RefueledMiner{
 	//	log.Info("活跃矿工统计","Reminer",x,"加注时间",y)
 	//}
 
-   //如果区块数大于一天的区块数，则统计启始点为当前区块号之前的5670所对应的区块号，否则从0块开始统计
-   if bc.CurrentBlock().NumberU64()<5760 {
-	  Start_Num=0
-   }else{
-	  Start_Num=bc.CurrentBlock().NumberU64()-5760		
-   }
+	//如果区块数大于一天的区块数，则统计启始点为当前区块号之前的5670所对应的区块号，否则从0块开始统计
+	if ComputeNumber < 5760 {
+		Start_Num = 1
+	} else {
+		Start_Num = ComputeNumber - 5760
+	}
+
 	//统计App的数量:遍历一天的区块数据,统计App的数量,并在数组变量中定义App所对应的合约地址；同时统计一天的活跃用户总数（此值晢未使用）
-	for i:=bc.CurrentBlock().NumberU64();i>Start_Num ;i--{       //统计一天的区块
-		for _,tx:=range bc.GetBlockByNumber(i).Transactions() {   //统计每个区块的交易
-			msg,err:= tx.AsMessage(types.MakeSigner(bc.Config(), bc.GetBlockByNumber(i).Header().Number))   //获取交易的消息内容
-			if err != nil||msg.To()==nil||!bytes.Equal(msg.Data(),MineMark)||RefueledMiner[msg.From()]==nil{      //如果访问错误码或是合约创建消息，进入下一次循环
+	for i := ComputeNumber; i > Start_Num; i-- { //统计一天的区块
+		for _, tx := range bc.GetBlockByNumber(i).Transactions() { //统计每个区块的交易
+			msg, err := tx.AsMessage(types.MakeSigner(bc.Config(), bc.GetBlockByNumber(i).Header().Number))              //获取交易的消息内容
+			if err != nil || msg.To() == nil || !bytes.Equal(msg.Data(), MineMark) || RefueledMiner[msg.From()] == nil { //如果访问错误码或是合约创建消息，进入下一次循环
 				continue
 			}
 			//检查矿工是否是活跃矿工
 			//统计移动矿工的总数量，要求移动矿工的能量加注时间不能超过所统计区块时间的一小时。
-			if RefueledMiner[msg.From()].Add(RefueledMiner[msg.From()],big.NewInt(3600)).Cmp(bc.GetBlockByNumber(i).Time())>0&&bytes.Equal(msg.Data(),MineMark){
+			if RefueledMiner[msg.From()].Add(RefueledMiner[msg.From()], big.NewInt(3600)).Cmp(bc.GetBlockByNumber(i).Time()) > 0 && bytes.Equal(msg.Data(), MineMark) {
 				//统计移动应用的数量，如果是挖矿智能合约则计入。
-	       	    for m:=0;m<len(AppUsers);m++{       //统计该合约地址是否已加入合约地址
-				    if AppUsers[m].AppAddress==*msg.To(){
-						exist=true
+				for m := 0; m < len(AppUsers); m++ { //统计该合约地址是否已加入合约地址
+					if AppUsers[m].AppAddress == *msg.To() {
+						exist = true
 						break
-					}  
-			    }
-				if exist==false {
-				   AppUsers=append(AppUsers,AppActiveUser{*msg.To(),0})   //初始化移动矿池的活跃用户值为0。
-		     	} 
-				exist=false     
-			} 
+					}
+				}
+				if exist == false {
+					AppUsers = append(AppUsers, AppActiveUser{*msg.To(), 0}) //初始化移动矿池的活跃用户值为0。
+				}
+				exist = false
+			}
 		}
 	}
 	//如果App数量为0，则退出统计
-	if len(AppUsers)==0{
-		return Tokentime	
+	if len(AppUsers) == 0 {
+		return Tokentime
 	}
-    //统计每个App对应的用户数
-    for x:=0;x<len(AppUsers);x++{
+	//统计每个App对应的用户数
+	for x := 0; x < len(AppUsers); x++ {
 		//初始设置当前下标所对应的App活跃用户数为空
-		ActiveMiners=[]common.Address{}
+		ActiveMiners = []common.Address{}
 		//遍历天天的区块,统计当前下标所对应App的活跃用户数。
-		for i:=bc.CurrentBlock().NumberU64();i>Start_Num ;i--{
-	         for _,tx:=range bc.GetBlockByNumber(i).Transactions() {
-		        msg,err:= tx.AsMessage(types.MakeSigner(bc.Config(), bc.GetBlockByNumber(i).Header().Number))
-		        if err != nil||msg.To()==nil||RefueledMiner[msg.From()]==nil{
-			        continue
-	            }
+		for i := ComputeNumber; i > Start_Num; i-- {
+			for _, tx := range bc.GetBlockByNumber(i).Transactions() {
+				msg, err := tx.AsMessage(types.MakeSigner(bc.Config(), bc.GetBlockByNumber(i).Header().Number))
+				if err != nil || msg.To() == nil || RefueledMiner[msg.From()] == nil {
+					continue
+				}
 				//统计当前移动应用的活跃矿工数，要求挖矿对象为本矿池，移动矿工的注册时间不能超过所统计区块时间的一小时。
 				//检查矿工是否是活跃矿工
-				if *msg.To()==AppUsers[x].AppAddress&&RefueledMiner[msg.From()].Add(RefueledMiner[msg.From()],big.NewInt(3600)).Cmp(bc.GetBlockByNumber(i).Time())>0{
-				//if *msg.To()==AppUsers[x].AppAddress&&Refminer_exist{
-		 	    	for j:=0;j<len(ActiveMiners);j++{
-				        if ActiveMiners[j]==msg.From(){
-					      exist=true
-					      break
-				        }  
-			        } 
-			       if exist==false {
-				      ActiveMiners=append(ActiveMiners,msg.From())
-			        }
-				   exist=false				
-		        }  
-	        }
+				if *msg.To() == AppUsers[x].AppAddress && RefueledMiner[msg.From()].Add(RefueledMiner[msg.From()], big.NewInt(3600)).Cmp(bc.GetBlockByNumber(i).Time()) > 0 {
+					//if *msg.To()==AppUsers[x].AppAddress&&Refminer_exist{
+					for j := 0; j < len(ActiveMiners); j++ {
+						if ActiveMiners[j] == msg.From() {
+							exist = true
+							break
+						}
+					}
+					if exist == false {
+						ActiveMiners = append(ActiveMiners, msg.From())
+					}
+					exist = false
+				}
+			}
 		}
 		//对当前下标所对应的App数组的活跃用户数赋值
-		AppUsers[x].ActiveUsers=int64(len(ActiveMiners))
-	}	       
+		AppUsers[x].ActiveUsers = int64(len(ActiveMiners))
+	}
 	//统计总用户权重并查询和定义当前矿池的用户权重
-	var TotalUsers,Coinbase_users int64
-	for y:=0;y<len(AppUsers);y++{
-		//log.Info("计算结果","App",AppUsers[y].AppAddress,"ActiveMiners",AppUsers[y].ActiveUsers)
-		TotalUsers=TotalUsers+AppUsers[y].ActiveUsers
-		if AppUsers[y].AppAddress==Coinbase {
-			Coinbase_users=AppUsers[y].ActiveUsers    //当前矿池的用户权重
+	var TotalUsers, Coinbase_users int64
+	for y := 0; y < len(AppUsers); y++ {
+		//log.Info("计算结果", "App", AppUsers[y].AppAddress, "ActiveMiners", AppUsers[y].ActiveUsers)
+		TotalUsers = TotalUsers + AppUsers[y].ActiveUsers
+		if AppUsers[y].AppAddress == Coinbase {
+			Coinbase_users = AppUsers[y].ActiveUsers //当前矿池的用户权重
 		}
 	}
 	//当前矿池的活动矿工数是否大于矿池的平均矿工数，如果大于使用平方根衰减增长函数。
-	if Coinbase_users>TotalUsers/int64(len(AppUsers)){
-		 averageuser:=float64(TotalUsers)/float64(len(AppUsers))
-         tem_Tokentime:=int64(averageuser*math.Sqrt(float64(Coinbase_users)/averageuser))
-		 //Tokentime= avarageminer*sqrt((Tokentime/avarageminer)) 权重等于矿池平均活跃用户数乘以当前矿池的活跃用户相对平均数倍数的方根。
-		 Tokentime=big.NewInt(tem_Tokentime)
-		 //log.Info("计算结果","averageuser",averageuser,"tem_Tokentime",tem_Tokentime,"sqrt",float64(Coinbase_users)/averageuser)
-    }else{
-		Tokentime=big.NewInt(Coinbase_users)
+	if Coinbase_users > TotalUsers/int64(len(AppUsers)) {
+		averageuser := float64(TotalUsers) / float64(len(AppUsers))
+		tem_Tokentime := int64(averageuser * math.Sqrt(float64(Coinbase_users)/averageuser))
+		//Tokentime= avarageminer*sqrt((Tokentime/avarageminer)) 权重等于矿池平均活跃用户数乘以当前矿池的活跃用户相对平均数倍数的方根。
+		Tokentime = big.NewInt(tem_Tokentime)
+		//log.Info("计算结果","averageuser",averageuser,"tem_Tokentime",tem_Tokentime,"sqrt",float64(Coinbase_users)/averageuser)
+	} else {
+		Tokentime = big.NewInt(Coinbase_users)
 	}
 	//log.Info("计算结果","Coinbase_Users",Coinbase_users)
 	return Tokentime
 }
-
-
 
 // InsertChain attempts to insert the given batch of blocks in to the canonical
 // chain or, otherwise, create a fork. If an error is returned it will return
@@ -1190,11 +1190,12 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		seals[i] = true
 	}
 	abort, results := bc.engine.VerifyHeaders(bc, headers, seals)
-	
-	Tokentime := bc.CalcTokenTime(bc.CurrentBlock().Coinbase())
+
+	Tokentime := bc.CalcTokenTime(bc.CurrentBlock().Coinbase(), bc.CurrentBlock().NumberU64()-1)
+	//log.Info("计算结果", "Computing Tokentime", Tokentime, "coinbase tokentime", bc.CurrentBlock().Header().Tokentime)
 	//统计所得Tokentime减去矿工所提供的Tokentime的绝对值小于等于1
-	if Tokentime.Abs(Tokentime.Sub(Tokentime,bc.CurrentBlock().Header().Tokentime)).Cmp(big.NewInt(1))>0  {
-	    return 1, events, coalescedLogs, fmt.Errorf("invalid Tokentime: have %v, need %v", bc.CurrentBlock().Header().Tokentime, Tokentime)
+	if Tokentime.Abs(Tokentime.Sub(Tokentime, bc.CurrentBlock().Header().Tokentime)).Cmp(big.NewInt(1)) > 0 {
+		return 1, events, coalescedLogs, fmt.Errorf("invalid Tokentime: have %v, need %v", bc.CurrentBlock().Header().Tokentime, Tokentime)
 	}
 
 	defer close(abort)

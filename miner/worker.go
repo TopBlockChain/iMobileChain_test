@@ -316,7 +316,7 @@ func (self *worker) wait() {
 			for _, log := range work.state.Logs() {
 				log.BlockHash = block.Hash()
 			}
-		//	log.Info("Worker.wait","status",work.receipts[0].Status)
+			//	log.Info("Worker.wait","status",work.receipts[0].Status)
 			stat, err := self.chain.WriteBlockWithState(block, work.receipts, work.state)
 			if err != nil {
 				log.Error("Failed writing block to chain", "err", err)
@@ -418,9 +418,9 @@ func (self *worker) commitNewWork() {
 	// Only set the coinbase if we are mining (avoid spurious block rewards)
 	if atomic.LoadInt32(&self.mining) == 1 {
 		header.Coinbase = self.coinbase
-		header.Tokentime = self.chain.CalcTokenTime(header.Coinbase)
-		if header.Tokentime.Cmp(big.NewInt(0))==0 {
-            log.Info("There is no mobile user to mine for this application ，it can not to get reward for mining！")              
+		header.Tokentime = self.chain.CalcTokenTime(header.Coinbase, self.chain.CurrentBlock().NumberU64())
+		if header.Tokentime.Cmp(big.NewInt(0)) == 0 {
+			log.Info("There is no mobile user to mine for this application ，it can not to get reward for mining！")
 		}
 	}
 	if err := self.engine.Prepare(self.chain, header); err != nil {
@@ -488,7 +488,7 @@ func (self *worker) commitNewWork() {
 	}
 	// We only care about logging if we're actually mining.
 	if atomic.LoadInt32(&self.mining) == 1 {
-		log.Info("Commit new mining work", "number", work.Block.Number(), "stake",header.Tokentime,"txs", work.tcount, "uncles", len(uncles), "elapsed", common.PrettyDuration(time.Since(tstart)))
+		log.Info("Commit new mining work", "number", work.Block.Number(), "stake", header.Tokentime, "txs", work.tcount, "uncles", len(uncles), "elapsed", common.PrettyDuration(time.Since(tstart)))
 		self.unconfirmed.Shift(work.Block.NumberU64() - 1)
 	}
 	self.push(work)
