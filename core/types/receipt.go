@@ -68,6 +68,8 @@ type receiptMarshaling struct {
 
 // receiptRLP is the consensus encoding of a receipt.
 type receiptRLP struct {
+	//增加一项描述状态
+	Status []byte
 	PostStateOrStatus []byte
 	CumulativeGasUsed uint64
 	Bloom             Bloom
@@ -75,6 +77,8 @@ type receiptRLP struct {
 }
 
 type receiptStorageRLP struct {
+	//增加一项描述状态
+	Status []byte
 	PostStateOrStatus []byte
 	CumulativeGasUsed uint64
 	Bloom             Bloom
@@ -98,7 +102,10 @@ func NewReceipt(root []byte, failed bool, cumulativeGasUsed uint64) *Receipt {
 // EncodeRLP implements rlp.Encoder, and flattens the consensus fields of a receipt
 // into an RLP stream. If no post state is present, byzantium fork is assumed.
 func (r *Receipt) EncodeRLP(w io.Writer) error {
-	return rlp.Encode(w, &receiptRLP{r.statusEncoding(), r.CumulativeGasUsed, r.Bloom, r.Logs})
+	if r.Status == ReceiptStatusFailed {
+		return rlp.Encode(w, &receiptRLP{receiptStatusFailedRLP,r.statusEncoding(), r.CumulativeGasUsed, r.Bloom, r.Logs})
+	}
+	return rlp.Encode(w, &receiptRLP{receiptStatusSuccessfulRLP,r.statusEncoding(), r.CumulativeGasUsed, r.Bloom, r.Logs})
 }
 
 // DecodeRLP implements rlp.Decoder, and loads the consensus fields of a receipt
@@ -108,7 +115,7 @@ func (r *Receipt) DecodeRLP(s *rlp.Stream) error {
 	if err := s.Decode(&dec); err != nil {
 		return err
 	}
-	if err := r.setStatus(dec.PostStateOrStatus); err != nil {
+	if err := r.setStatus(dec.Status); err != nil {
 		return err
 	}
 	r.CumulativeGasUsed, r.Bloom, r.Logs = dec.CumulativeGasUsed, dec.Bloom, dec.Logs
@@ -158,7 +165,14 @@ type ReceiptForStorage Receipt
 // EncodeRLP implements rlp.Encoder, and flattens all content fields of a receipt
 // into an RLP stream.
 func (r *ReceiptForStorage) EncodeRLP(w io.Writer) error {
+	var status []byte    //增加Status定义
+	if r.Status == ReceiptStatusFailed {
+		status=receiptStatusFailedRLP
+	} else {
+        status=receiptStatusSuccessfulRLP
+	}
 	enc := &receiptStorageRLP{
+		Status: status,        //增加Status定义
 		PostStateOrStatus: (*Receipt)(r).statusEncoding(),
 		CumulativeGasUsed: r.CumulativeGasUsed,
 		Bloom:             r.Bloom,
@@ -180,7 +194,7 @@ func (r *ReceiptForStorage) DecodeRLP(s *rlp.Stream) error {
 	if err := s.Decode(&dec); err != nil {
 		return err
 	}
-	if err := (*Receipt)(r).setStatus(dec.PostStateOrStatus); err != nil {
+	if err := (*Receipt)(r).setStatus(dec.Status); err != nil {   //定义Status，根据解析结果
 		return err
 	}
 	// Assign the consensus fields
